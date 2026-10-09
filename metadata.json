@@ -1,0 +1,6 @@
+{
+  "name": "Al Irsyad Darul Aitam",
+  "description": "Portal Resmi Sistem Informasi Terpadu Al Irsyad Darul Aitam - Pengelolaan Data Santri, Keuangan ZISWAF, dan Audit Log Berstandar PSAK 109",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
