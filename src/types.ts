@@ -145,10 +145,16 @@ export interface FoundationActivity {
 export interface SystemUser {
   id: string;
   name: string;
+  title?: string;
   role: 'Ketua Yayasan' | 'Bendahara' | 'Musyrif Senior' | 'Staf Admin' | 'Pembina Tahfidz';
+  roleCategory: 'KETUA' | 'BENDAHARA' | 'STAF';
+  roleLabel: string;
+  nip: string;
   email: string;
   phone: string;
   avatarText: string;
   status: 'Aktif' | 'Nonaktif';
+  is_active: boolean;
   lastActive: string;
+  ipAddress: string;
 }

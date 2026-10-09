@@ -20,6 +20,7 @@ const MainLayout: React.FC = () => {
     switch (activePath) {
       case 'dashboard':
         return <DashboardView />;
+      case 'donasi':
       case 'donasi-dan-wakaf':
         return <DonasiWakafView />;
       case 'pengeluaran':
@@ -30,10 +31,12 @@ const MainLayout: React.FC = () => {
         return <LaporanKeuanganView />;
       case 'anak-asuh':
         return <AnakAsuhView />;
+      case 'kegiatan':
       case 'kegiatan-yayasan':
         return <KegiatanYayasanView />;
       case 'master-data':
         return <MasterDataView />;
+      case 'pengguna':
       case 'pengguna-dan-rbac':
         return <PenggunaRbacView />;
       case 'audit-log':
@@ -43,11 +46,11 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface font-sans text-on-surface">
+    <div className="min-h-screen bg-background font-sans text-on-surface antialiased">
       <Sidebar />
       <div className="pl-0 lg:pl-72 flex flex-col min-h-screen">
         <Header />
-        <main className="w-full pt-20 pb-16 bg-surface flex-1">
+        <main className="w-full pt-16 bg-background flex-1">
           {renderActiveView()}
         </main>
       </div>

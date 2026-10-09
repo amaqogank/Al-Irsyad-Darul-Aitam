@@ -63,6 +63,9 @@ interface AppContextType {
   currentUser: SystemUser;
   setCurrentUser: (user: SystemUser) => void;
   users: SystemUser[];
+  addUser: (data: Omit<SystemUser, 'id'>) => void;
+  updateUser: (id: string, data: Partial<SystemUser>) => void;
+  toggleUserStatus: (id: string) => void;
 
   // Global Modals
   activeModal: string | null;
@@ -86,7 +89,7 @@ function generatePseudoSha256(seed: string): string {
 }
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activePath, setActivePath] = useState<string>('audit-log');
+  const [activePath, setActivePath] = useState<string>('pengguna');
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Load from localStorage or use initialData
@@ -120,14 +123,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialActivities;
   });
 
-  const [users] = useState<SystemUser[]>(initialUsers);
-  const [currentUser, setCurrentUser] = useState<SystemUser>(initialUsers[0]); // Ust. Ahmad Zaki
+  const [users, setUsers] = useState<SystemUser[]>(() => {
+    const saved = localStorage.getItem('al_irsyad_users_v2');
+    return saved ? JSON.parse(saved) : initialUsers;
+  });
+  const [currentUser, setCurrentUser] = useState<SystemUser>(() => {
+    const saved = localStorage.getItem('al_irsyad_current_user_v2');
+    return saved ? JSON.parse(saved) : initialUsers[0]; // Ust. Ahmad Nashir, S.Pd.I
+  });
 
   const [selectedAuditId, setSelectedAuditId] = useState<string | null>('AUD-9021');
   const [selectedSantri, setSelectedSantri] = useState<Santri | null>(initialSantriList[0]);
 
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [modalData, setModalData] = useState<any>(null);
+
+  // Sync to localStorage
+  useEffect(() => {
+    localStorage.setItem('al_irsyad_users_v2', JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem('al_irsyad_current_user_v2', JSON.stringify(currentUser));
+  }, [currentUser]);
 
   // Sync to localStorage
   useEffect(() => {
@@ -519,6 +537,120 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActivities((prev) => [newAct, ...prev]);
   };
 
+  // Add User
+  const addUser = (data: Omit<SystemUser, 'id'>) => {
+    const nextNum = users.length + 1;
+    const newId = `USR-0${nextNum}`;
+    const newUser: SystemUser = { ...data, id: newId };
+    setUsers((prev) => [...prev, newUser]);
+
+    const nowStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) + ' WIB';
+
+    addAuditLog({
+      recordId: `#${data.nip || newId}`,
+      table: 'users',
+      tableNameLabel: 'users (Pengguna Sistem)',
+      action: 'CREATE',
+      timestamp: nowStr,
+      relativeTime: 'Baru saja',
+      executorName: currentUser.name,
+      executorRole: currentUser.role,
+      executorIp: currentUser.ipAddress || '192.168.1.18',
+      summary: `Penambahan akun pengurus baru: ${data.name} (${data.role})`,
+      rationale: 'Pemberian akses operasional staf Darul Aitam berprinsip RBAC.',
+      targetEntityName: data.name,
+      changes: [
+        { fieldName: 'role', oldValue: 'null', newValue: data.role, description: 'Peran operasional' },
+        { fieldName: 'email', oldValue: 'null', newValue: data.email, description: 'Surel akun' }
+      ]
+    });
+  };
+
+  // Update User
+  const updateUser = (id: string, data: Partial<SystemUser>) => {
+    const existing = users.find((u) => u.id === id);
+    if (!existing) return;
+
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data } : u)));
+    if (currentUser.id === id) {
+      setCurrentUser((prev) => ({ ...prev, ...data }));
+    }
+
+    const nowStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) + ' WIB';
+
+    addAuditLog({
+      recordId: `#${existing.nip || existing.id}`,
+      table: 'users',
+      tableNameLabel: 'users (Pengguna Sistem)',
+      action: 'UPDATE',
+      timestamp: nowStr,
+      relativeTime: 'Baru saja',
+      executorName: currentUser.name,
+      executorRole: currentUser.role,
+      executorIp: currentUser.ipAddress || '192.168.1.18',
+      summary: `Pembaruan hak akses / profil: ${existing.name}`,
+      rationale: 'Penyesuaian kewenangan tugas pengurus yayasan.',
+      targetEntityName: existing.name,
+      changes: Object.keys(data).map((k) => ({
+        fieldName: k,
+        oldValue: (existing as any)[k],
+        newValue: (data as any)[k],
+        description: `Perubahan data pada field ${k}`
+      }))
+    });
+  };
+
+  // Toggle User Status
+  const toggleUserStatus = (id: string) => {
+    const existing = users.find((u) => u.id === id);
+    if (!existing) return;
+
+    const newActive = !existing.is_active;
+    const newStatus = newActive ? 'Aktif' : 'Nonaktif';
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, is_active: newActive, status: newStatus } : u))
+    );
+
+    const nowStr = new Date().toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }) + ' WIB';
+
+    addAuditLog({
+      recordId: `#${existing.nip || existing.id}`,
+      table: 'users',
+      tableNameLabel: 'users (Pengguna Sistem)',
+      action: 'UPDATE',
+      timestamp: nowStr,
+      relativeTime: 'Baru saja',
+      executorName: currentUser.name,
+      executorRole: currentUser.role,
+      executorIp: currentUser.ipAddress || '192.168.1.18',
+      summary: `Ubah status akun pengurus ${existing.name} menjadi ${newStatus}`,
+      rationale: `Status login diubah ke ${newStatus}.`,
+      targetEntityName: existing.name,
+      changes: [
+        { fieldName: 'is_active', oldValue: existing.is_active, newValue: newActive, description: 'Status keaktifan login' }
+      ]
+    });
+  };
+
   // Find currently selected audit item
   const selectedAuditItem =
     auditLogs.find((item) => item.id === selectedAuditId || item.recordId === selectedAuditId) ||
@@ -556,6 +688,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         currentUser,
         setCurrentUser,
         users,
+        addUser,
+        updateUser,
+        toggleUserStatus,
         activeModal,
         setActiveModal,
         modalData,
